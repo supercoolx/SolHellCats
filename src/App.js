@@ -31,8 +31,6 @@ const App = () => {
 			console.log("Connected with Public Key: ", response.publicKey.toString());
 			setWalletAddress(response.publicKey.toString())
 		}
-
-
 	};
 
 	/*
@@ -51,8 +49,6 @@ const App = () => {
 		<div className="App">
 			<div className="container">
 				<div className="header-container">
-					<p className="header"> NFT DROP</p>
-					<p className="sub-text">Join The Meta Creatures Club</p>
 					{!walletAddress && renderNotConnectedContainer()}
 				</div>
 
