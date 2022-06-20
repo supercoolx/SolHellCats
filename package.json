@@ -14,6 +14,7 @@
     "assert": "^2.0.0",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
+    "react-js-progressbar": "^1.1.1",
     "react-scripts": "4.0.3",
     "web-vitals": "^2.1.4"
   },

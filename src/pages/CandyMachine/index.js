@@ -392,12 +392,13 @@ const CandyMachine = ({ walletAddress }) => {
 	return (
 		//Only how this if machineStats is available 
 		candyMachine ?
-			<div className="flex gap-3">
+			<div className="w-full flex gap-3 justify-between items-center">
+				<div>Amount:</div>
 				<input type="number" className='rounded-md outline-none text-black px-2 w-20' value={count} onChange={changeCount} />
-				{candyMachine.state.itemsRedeemed === candyMachine.state.itemsAvailable ? <p className="px-3 py-1 rounded-md border">SOlD OUT CRITTERS!</p> : (
+				{candyMachine.state.itemsRedeemed === candyMachine.state.itemsAvailable ? 
+					<div className="px-3 py-1 border-red-500 text-red-500 rounded-md border">SOLD OUT CRITTERS!</div> : 
 					<button className='px-3 py-1 rounded-md border' onClick={clickMint}>Mint NFT</button>
-				)}
-
+				}
 			</div> :
 			<div>Loading...</div>
 	)
