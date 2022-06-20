@@ -27,11 +27,7 @@ const CandyMachine = ({ walletAddress }) => {
 	const [count, setCount] = useState(1);
 
 	const changeCount = (e) => setCount(e.target.value);
-	const clickMint = async () => {
-		for(let i = 0; i < count; i ++) {
-			await mintToken();
-		}
-	}
+	const clickMint = async () => mintToken(count);
 
 	const getProvider = () => {
 		const rpcHost = process.env.REACT_APP_SOLANA_RPC_HOST;
@@ -168,211 +164,219 @@ const CandyMachine = ({ walletAddress }) => {
 		});
 	};
 
-	const mintToken = async () => {
-		const mint = web3.Keypair.generate();
+	const mintToken = async (c) => {
+		const signersMatrix = [];
+		const instructionsMatrix = [];
 
-		const userTokenAccountAddress = (
-			await getAtaForMint(mint.publicKey, walletAddress.publicKey)
-		)[0];
+		for (let index = 0; index < c; index++) {
+			const mint = web3.Keypair.generate();
 
-		const userPayingAccountAddress = candyMachine.state.tokenMint
-			? (await getAtaForMint(candyMachine.state.tokenMint, walletAddress.publicKey))[0]
-			: walletAddress.publicKey;
+			const userTokenAccountAddress = (
+				await getAtaForMint(mint.publicKey, walletAddress.publicKey)
+			)[0];
 
-		const candyMachineAddress = candyMachine.id;
-		const remainingAccounts = [];
-		const signers = [mint];
-		const cleanupInstructions = [];
-		const instructions = [
-			web3.SystemProgram.createAccount({
-				fromPubkey: walletAddress.publicKey,
-				newAccountPubkey: mint.publicKey,
-				space: MintLayout.span,
-				lamports:
-					await candyMachine.program.provider.connection.getMinimumBalanceForRentExemption(
-						MintLayout.span,
-					),
-				programId: TOKEN_PROGRAM_ID,
-			}),
-			Token.createInitMintInstruction(
-				TOKEN_PROGRAM_ID,
-				mint.publicKey,
-				0,
-				walletAddress.publicKey,
-				walletAddress.publicKey,
-			),
-			createAssociatedTokenAccountInstruction(
-				userTokenAccountAddress,
-				walletAddress.publicKey,
-				walletAddress.publicKey,
-				mint.publicKey,
-			),
-			Token.createMintToInstruction(
-				TOKEN_PROGRAM_ID,
-				mint.publicKey,
-				userTokenAccountAddress,
-				walletAddress.publicKey,
-				[],
-				1,
-			),
-		];
+			const userPayingAccountAddress = candyMachine.state.tokenMint
+				? (await getAtaForMint(candyMachine.state.tokenMint, walletAddress.publicKey))[0]
+				: walletAddress.publicKey;
 
-		if (candyMachine.state.gatekeeper) {
-			remainingAccounts.push({
-				pubkey: (
-					await getNetworkToken(
-						walletAddress.publicKey,
-						candyMachine.state.gatekeeper.gatekeeperNetwork,
-					)
-				)[0],
-				isWritable: true,
-				isSigner: false,
-			});
-			if (candyMachine.state.gatekeeper.expireOnUse) {
-				remainingAccounts.push({
-					pubkey: CIVIC,
-					isWritable: false,
-					isSigner: false,
-				});
+			const candyMachineAddress = candyMachine.id;
+			const remainingAccounts = [];
+			const signers = [mint];
+			const cleanupInstructions = [];
+			const instructions = [
+				web3.SystemProgram.createAccount({
+					fromPubkey: walletAddress.publicKey,
+					newAccountPubkey: mint.publicKey,
+					space: MintLayout.span,
+					lamports:
+						await candyMachine.program.provider.connection.getMinimumBalanceForRentExemption(
+							MintLayout.span,
+						),
+					programId: TOKEN_PROGRAM_ID,
+				}),
+				Token.createInitMintInstruction(
+					TOKEN_PROGRAM_ID,
+					mint.publicKey,
+					0,
+					walletAddress.publicKey,
+					walletAddress.publicKey,
+				),
+				createAssociatedTokenAccountInstruction(
+					userTokenAccountAddress,
+					walletAddress.publicKey,
+					walletAddress.publicKey,
+					mint.publicKey,
+				),
+				Token.createMintToInstruction(
+					TOKEN_PROGRAM_ID,
+					mint.publicKey,
+					userTokenAccountAddress,
+					walletAddress.publicKey,
+					[],
+					1,
+				),
+			];
+
+			if (candyMachine.state.gatekeeper) {
 				remainingAccounts.push({
 					pubkey: (
-						await getNetworkExpire(
+						await getNetworkToken(
+							walletAddress.publicKey,
 							candyMachine.state.gatekeeper.gatekeeperNetwork,
 						)
 					)[0],
-					isWritable: false,
+					isWritable: true,
 					isSigner: false,
 				});
+				if (candyMachine.state.gatekeeper.expireOnUse) {
+					remainingAccounts.push({
+						pubkey: CIVIC,
+						isWritable: false,
+						isSigner: false,
+					});
+					remainingAccounts.push({
+						pubkey: (
+							await getNetworkExpire(
+								candyMachine.state.gatekeeper.gatekeeperNetwork,
+							)
+						)[0],
+						isWritable: false,
+						isSigner: false,
+					});
+				}
 			}
-		}
-		if (candyMachine.state.whitelistMintSettings) {
-			const mint = new web3.PublicKey(
-				candyMachine.state.whitelistMintSettings.mint,
-			);
+			if (candyMachine.state.whitelistMintSettings) {
+				const mint = new web3.PublicKey(
+					candyMachine.state.whitelistMintSettings.mint,
+				);
 
-			const whitelistToken = (await getAtaForMint(mint, walletAddress.publicKey))[0];
-			remainingAccounts.push({
-				pubkey: whitelistToken,
-				isWritable: true,
-				isSigner: false,
-			});
-
-			if (candyMachine.state.whitelistMintSettings.mode.burnEveryTime) {
-				const whitelistBurnAuthority = web3.Keypair.generate();
-
+				const whitelistToken = (await getAtaForMint(mint, walletAddress.publicKey))[0];
 				remainingAccounts.push({
-					pubkey: mint,
+					pubkey: whitelistToken,
+					isWritable: true,
+					isSigner: false,
+				});
+
+				if (candyMachine.state.whitelistMintSettings.mode.burnEveryTime) {
+					const whitelistBurnAuthority = web3.Keypair.generate();
+
+					remainingAccounts.push({
+						pubkey: mint,
+						isWritable: true,
+						isSigner: false,
+					});
+					remainingAccounts.push({
+						pubkey: whitelistBurnAuthority.publicKey,
+						isWritable: false,
+						isSigner: true,
+					});
+					signers.push(whitelistBurnAuthority);
+					const exists =
+						await candyMachine.program.provider.connection.getAccountInfo(
+							whitelistToken,
+						);
+					if (exists) {
+						instructions.push(
+							Token.createApproveInstruction(
+								TOKEN_PROGRAM_ID,
+								whitelistToken,
+								whitelistBurnAuthority.publicKey,
+								walletAddress.publicKey,
+								[],
+								1,
+							),
+						);
+						cleanupInstructions.push(
+							Token.createRevokeInstruction(
+								TOKEN_PROGRAM_ID,
+								whitelistToken,
+								walletAddress.publicKey,
+								[],
+							),
+						);
+					}
+				}
+			}
+
+			if (candyMachine.state.tokenMint) {
+				const transferAuthority = web3.Keypair.generate();
+
+				signers.push(transferAuthority);
+				remainingAccounts.push({
+					pubkey: userPayingAccountAddress,
 					isWritable: true,
 					isSigner: false,
 				});
 				remainingAccounts.push({
-					pubkey: whitelistBurnAuthority.publicKey,
+					pubkey: transferAuthority.publicKey,
 					isWritable: false,
 					isSigner: true,
 				});
-				signers.push(whitelistBurnAuthority);
-				const exists =
-					await candyMachine.program.provider.connection.getAccountInfo(
-						whitelistToken,
-					);
-				if (exists) {
-					instructions.push(
-						Token.createApproveInstruction(
-							TOKEN_PROGRAM_ID,
-							whitelistToken,
-							whitelistBurnAuthority.publicKey,
-							walletAddress.publicKey,
-							[],
-							1,
-						),
-					);
-					cleanupInstructions.push(
-						Token.createRevokeInstruction(
-							TOKEN_PROGRAM_ID,
-							whitelistToken,
-							walletAddress.publicKey,
-							[],
-						),
-					);
-				}
+
+				instructions.push(
+					Token.createApproveInstruction(
+						TOKEN_PROGRAM_ID,
+						userPayingAccountAddress,
+						transferAuthority.publicKey,
+						walletAddress.publicKey,
+						[],
+						candyMachine.state.price.toNumber(),
+					),
+				);
+				cleanupInstructions.push(
+					Token.createRevokeInstruction(
+						TOKEN_PROGRAM_ID,
+						userPayingAccountAddress,
+						walletAddress.publicKey,
+						[],
+					),
+				);
 			}
-		}
+			const metadataAddress = await getMetadata(mint.publicKey);
+			const masterEdition = await getMasterEdition(mint.publicKey);
 
-		if (candyMachine.state.tokenMint) {
-			const transferAuthority = web3.Keypair.generate();
-
-			signers.push(transferAuthority);
-			remainingAccounts.push({
-				pubkey: userPayingAccountAddress,
-				isWritable: true,
-				isSigner: false,
-			});
-			remainingAccounts.push({
-				pubkey: transferAuthority.publicKey,
-				isWritable: false,
-				isSigner: true,
-			});
+			const [candyMachineCreator, creatorBump] = await getCandyMachineCreator(
+				candyMachineAddress,
+			);
 
 			instructions.push(
-				Token.createApproveInstruction(
-					TOKEN_PROGRAM_ID,
-					userPayingAccountAddress,
-					transferAuthority.publicKey,
-					walletAddress.publicKey,
-					[],
-					candyMachine.state.price.toNumber(),
-				),
+				await candyMachine.program.instruction.mintNft(creatorBump, {
+					accounts: {
+						candyMachine: candyMachineAddress,
+						candyMachineCreator,
+						payer: walletAddress.publicKey,
+						wallet: candyMachine.state.treasury,
+						mint: mint.publicKey,
+						metadata: metadataAddress,
+						masterEdition,
+						mintAuthority: walletAddress.publicKey,
+						updateAuthority: walletAddress.publicKey,
+						tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+						tokenProgram: TOKEN_PROGRAM_ID,
+						systemProgram: web3.SystemProgram.programId,
+						rent: web3.SYSVAR_RENT_PUBKEY,
+						clock: web3.SYSVAR_CLOCK_PUBKEY,
+						recentBlockhashes: web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
+						instructionSysvarAccount: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+					},
+					remainingAccounts:
+						remainingAccounts.length > 0 ? remainingAccounts : undefined,
+				}),
 			);
-			cleanupInstructions.push(
-				Token.createRevokeInstruction(
-					TOKEN_PROGRAM_ID,
-					userPayingAccountAddress,
-					walletAddress.publicKey,
-					[],
-				),
-			);
+			
+			signersMatrix.push(signers);
+			signersMatrix.push([]);
+			instructionsMatrix.push(instructions);
+			instructionsMatrix.push(cleanupInstructions);
 		}
-		const metadataAddress = await getMetadata(mint.publicKey);
-		const masterEdition = await getMasterEdition(mint.publicKey);
-
-		const [candyMachineCreator, creatorBump] = await getCandyMachineCreator(
-			candyMachineAddress,
-		);
-
-		instructions.push(
-			await candyMachine.program.instruction.mintNft(creatorBump, {
-				accounts: {
-					candyMachine: candyMachineAddress,
-					candyMachineCreator,
-					payer: walletAddress.publicKey,
-					wallet: candyMachine.state.treasury,
-					mint: mint.publicKey,
-					metadata: metadataAddress,
-					masterEdition,
-					mintAuthority: walletAddress.publicKey,
-					updateAuthority: walletAddress.publicKey,
-					tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
-					tokenProgram: TOKEN_PROGRAM_ID,
-					systemProgram: web3.SystemProgram.programId,
-					rent: web3.SYSVAR_RENT_PUBKEY,
-					clock: web3.SYSVAR_CLOCK_PUBKEY,
-					recentBlockhashes: web3.SYSVAR_RECENT_BLOCKHASHES_PUBKEY,
-					instructionSysvarAccount: web3.SYSVAR_INSTRUCTIONS_PUBKEY,
-				},
-				remainingAccounts:
-					remainingAccounts.length > 0 ? remainingAccounts : undefined,
-			}),
-		);
-
-
 
 		try {
 			return (
 				await sendTransactions(
 					candyMachine.program.provider.connection,
 					candyMachine.program.provider.wallet,
-					[instructions, cleanupInstructions],
-					[signers, []],
+					instructionsMatrix,
+					signersMatrix,
 				)
 			).txs.map(t => t.txid);
 		} catch (e) {
@@ -409,19 +413,19 @@ const CandyMachine = ({ walletAddress }) => {
 	return (
 		//Only how this if machineStats is available 
 		candyMachine ?
-		<div className="machine-container">
-			<p className="mint-Description">Price: {candyMachine.state.price} SOL</p>
-			<p className="mint-Description">{`Drop Date: ${candyMachine.state.goLiveDateTimeString}`}</p>
-			<p className="mint-Description">{`Items Minted: ${candyMachine.state.itemsRedeemed} / ${candyMachine.state.itemsAvailable}`}</p>
-			<input type="number" className='mint-Description' value={count} onChange={changeCount} style={{marginBottom: '30px'}} />
-			{candyMachine.state.itemsRedeemed === candyMachine.state.itemsAvailable ? <p className="sub-Text">SOlD OUT CRITTERS!</p> : (
-				<button className="cta-button mint-button" onClick={clickMint}>
-					Mint NFT
-				</button>
-			)}
+			<div className="machine-container">
+				<p className="mint-Description">Price: {candyMachine.state.price} SOL</p>
+				<p className="mint-Description">{`Drop Date: ${candyMachine.state.goLiveDateTimeString}`}</p>
+				<p className="mint-Description">{`Items Minted: ${candyMachine.state.itemsRedeemed} / ${candyMachine.state.itemsAvailable}`}</p>
+				<input type="number" className='mint-Description' value={count} onChange={changeCount} style={{ marginBottom: '30px' }} />
+				{candyMachine.state.itemsRedeemed === candyMachine.state.itemsAvailable ? <p className="sub-Text">SOlD OUT CRITTERS!</p> : (
+					<button className="cta-button mint-button" onClick={clickMint}>
+						Mint NFT
+					</button>
+				)}
 
-		</div> : 
-		<div className="machine-container">Loading...</div>
+			</div> :
+			<div className="machine-container">Loading...</div>
 	)
 
 }
