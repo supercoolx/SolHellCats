@@ -132,11 +132,16 @@ function createAssociatedTokenAccountInstruction(
 	});
 }
 
+const shortenAddress = (address, chars = 4) => {
+	return `${address.slice(0, chars)}...${address.slice(-chars)}`;
+};
+
 export {
 	candyMachineProgram,
 	TOKEN_METADATA_PROGRAM_ID,
 	SPL_ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID,
 	CIVIC,
+	shortenAddress,
 	toDate,
 	formatNumber,
 	getAtaForMint,

@@ -4,8 +4,7 @@ import { MintLayout, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Program, Provider, web3 } from '@project-serum/anchor';
 import { sendTransactions } from './connection';
 import './CandyMachine.css';
-import { Buffer } from 'buffer'
-import CountdownTimer from './CountdownTime';
+import { Buffer } from 'buffer';
 import {
 	candyMachineProgram,
 	TOKEN_METADATA_PROGRAM_ID,
@@ -13,17 +12,17 @@ import {
 	getAtaForMint,
 	getNetworkExpire,
 	getNetworkToken,
-	CIVIC,
-	createAssociatedTokenAccountInstruction
+	CIVIC
 } from './helpers';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { useCandyMachine } from '../../CandyMachineContext';
 
 //To get all the require methods/classes for connecting to the solana blockchian 
 
 const opts = { preflightCommitment: 'processed' };
 
 const CandyMachine = ({ walletAddress }) => {
-	const [candyMachine, setCandyMachine] = useState(null);
+	const {candyMachine, setCandyMachine} = useCandyMachine();
 	const [count, setCount] = useState(1);
 
 	const changeCount = (e) => setCount(e.target.value);
@@ -390,42 +389,17 @@ const CandyMachine = ({ walletAddress }) => {
 		getCandyMachineState();
 	}, []);
 
-	const comeBackAndMint = () => {
-		window.alert("HEY COME BACK ON MINT DAY AND GET YOU ONE")
-	}
-
-	const renderDropTimer = () => {
-		//Get the current date and dropDate in a Javascript Date Object
-
-		const currentDate = new Date();
-		const dropDate = new Date(candyMachine.state.goLiveData * 1000);
-
-		//If the currentDate is before dropDate, render our Countdown component
-		if (currentDate < dropDate) {
-			console.log("Before Drop Date!");
-			// Don't forget to pass over your dropDate
-			return <CountdownTimer dropDate={dropDate} />;
-		};
-		//Else let's just return the current Drop Date
-		return <p>{`Drop Date: ${candyMachine.state.goLiveDataTimeString}`}</p>
-	}
-
 	return (
 		//Only how this if machineStats is available 
 		candyMachine ?
-			<div className="machine-container">
-				<p className="mint-Description">Price: {candyMachine.state.price} SOL</p>
-				<p className="mint-Description">{`Drop Date: ${candyMachine.state.goLiveDateTimeString}`}</p>
-				<p className="mint-Description">{`Items Minted: ${candyMachine.state.itemsRedeemed} / ${candyMachine.state.itemsAvailable}`}</p>
-				<input type="number" className='mint-Description' value={count} onChange={changeCount} style={{ marginBottom: '30px' }} />
-				{candyMachine.state.itemsRedeemed === candyMachine.state.itemsAvailable ? <p className="sub-Text">SOlD OUT CRITTERS!</p> : (
-					<button className="cta-button mint-button" onClick={clickMint}>
-						Mint NFT
-					</button>
+			<div className="flex gap-3">
+				<input type="number" className='rounded-md outline-none text-black px-2 w-20' value={count} onChange={changeCount} />
+				{candyMachine.state.itemsRedeemed === candyMachine.state.itemsAvailable ? <p className="px-3 py-1 rounded-md border">SOlD OUT CRITTERS!</p> : (
+					<button className='px-3 py-1 rounded-md border' onClick={clickMint}>Mint NFT</button>
 				)}
 
 			</div> :
-			<div className="machine-container">Loading...</div>
+			<div>Loading...</div>
 	)
 
 }
