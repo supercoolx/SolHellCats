@@ -24,6 +24,14 @@ const opts = { preflightCommitment: 'processed' };
 
 const CandyMachine = ({ walletAddress }) => {
 	const [candyMachine, setCandyMachine] = useState(null);
+	const [count, setCount] = useState(1);
+
+	const changeCount = (e) => setCount(e.target.value);
+	const clickMint = async () => {
+		for(let i = 0; i < count; i ++) {
+			await mintToken();
+		}
+	}
 
 	const getProvider = () => {
 		const rpcHost = process.env.REACT_APP_SOLANA_RPC_HOST;
@@ -400,18 +408,20 @@ const CandyMachine = ({ walletAddress }) => {
 
 	return (
 		//Only how this if machineStats is available 
-		candyMachine &&
+		candyMachine ?
 		<div className="machine-container">
 			<p className="mint-Description">Price: {candyMachine.state.price} SOL</p>
 			<p className="mint-Description">{`Drop Date: ${candyMachine.state.goLiveDateTimeString}`}</p>
 			<p className="mint-Description">{`Items Minted: ${candyMachine.state.itemsRedeemed} / ${candyMachine.state.itemsAvailable}`}</p>
+			<input type="number" className='mint-Description' value={count} onChange={changeCount} style={{marginBottom: '30px'}} />
 			{candyMachine.state.itemsRedeemed === candyMachine.state.itemsAvailable ? <p className="sub-Text">SOlD OUT CRITTERS!</p> : (
-				<button className="cta-button mint-button" onClick={mintToken}>
+				<button className="cta-button mint-button" onClick={clickMint}>
 					Mint NFT
 				</button>
 			)}
 
-		</div>
+		</div> : 
+		<div className="machine-container">Loading...</div>
 	)
 
 }
