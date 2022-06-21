@@ -16,6 +16,7 @@ import {
 } from './helpers';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { useCandyMachine } from '../../CandyMachineContext';
+import ReCAPTCHA from 'react-google-recaptcha';
 
 //To get all the require methods/classes for connecting to the solana blockchian 
 
@@ -392,13 +393,16 @@ const CandyMachine = ({ walletAddress }) => {
 	return (
 		//Only how this if machineStats is available 
 		candyMachine ?
-			<div className="w-full flex gap-3 justify-between items-center">
-				<div>Amount:</div>
-				<input type="number" className='rounded-md outline-none text-black px-2 w-20' value={count} onChange={changeCount} />
-				{candyMachine.state.itemsRedeemed === candyMachine.state.itemsAvailable ? 
-					<div className="px-3 py-1 border-red-500 text-red-500 rounded-md border">SOLD OUT CRITTERS!</div> : 
-					<button className='px-3 py-1 rounded-md border' onClick={clickMint}>Mint NFT</button>
-				}
+			<div className="w-full flex flex-col gap-3">
+				<ReCAPTCHA sitekey={process.env.GOOGLE_RECAPTCHA_KEY} onChange={console.log} />
+				<div className='flex gap-3 justify-between items-center'>
+					<div>Amount:</div>
+					<input type="number" className='rounded-md outline-none text-black px-2 w-20' value={count} onChange={changeCount} />
+					{candyMachine.state.itemsRedeemed === candyMachine.state.itemsAvailable ? 
+						<div className="px-3 py-1 border-red-500 text-red-500 rounded-md border">SOLD OUT CRITTERS!</div> : 
+						<button className='px-3 py-1 rounded-md border' onClick={clickMint}>Mint NFT</button>
+					}
+				</div>
 			</div> :
 			<div>Loading...</div>
 	)
