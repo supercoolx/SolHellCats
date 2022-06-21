@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Token } from '@solana/spl-token';
 import { MintLayout, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { Program, Provider, web3 } from '@project-serum/anchor';
+import ReactLoading from "react-loading";
 import { sendTransactions } from './connection';
 import './CandyMachine.css';
 import { Buffer } from 'buffer';
@@ -23,11 +24,24 @@ import ReCAPTCHA from 'react-google-recaptcha';
 const opts = { preflightCommitment: 'processed' };
 
 const CandyMachine = ({ walletAddress }) => {
+	const recaptchaRef = React.createRef();
 	const {candyMachine, setCandyMachine} = useCandyMachine();
 	const [count, setCount] = useState(1);
+	const [isLoading, setLoading] = useState(false);
 
 	const changeCount = (e) => setCount(e.target.value);
-	const clickMint = async () => mintToken(count);
+	const clickMint = async (e) => {
+		e.preventDefault();
+		const token = recaptchaRef.current.getValue();
+		if(!token) return window.alert('Please verify you\'re not a robot');
+		mintToken(count)
+		.then(() => setLoading(false))
+		.catch(err => {
+			setLoading(false);
+			alert(err.message);
+		});
+		setLoading(true);
+	}
 
 	const getProvider = () => {
 		const rpcHost = process.env.REACT_APP_SOLANA_RPC_HOST;
@@ -393,17 +407,20 @@ const CandyMachine = ({ walletAddress }) => {
 	return (
 		//Only how this if machineStats is available 
 		candyMachine ?
-			<div className="w-full flex flex-col gap-3">
-				<ReCAPTCHA sitekey={process.env.REACT_APP_RECAPTCHA_KEY} onChange={console.log} />
+			<form onSubmit={clickMint} className="w-full flex flex-col gap-3">
+				<ReCAPTCHA ref={recaptchaRef} sitekey={process.env.REACT_APP_RECAPTCHA_SITE_KEY} />
 				<div className='flex gap-3 justify-between items-center'>
 					<div>Amount:</div>
-					<input type="number" className='rounded-md outline-none text-black px-2 w-20' value={count} onChange={changeCount} />
-					{candyMachine.state.itemsRedeemed === candyMachine.state.itemsAvailable ? 
-						<div className="px-3 py-1 border-red-500 text-red-500 rounded-md border">SOLD OUT CRITTERS!</div> : 
-						<button className='px-3 py-1 rounded-md border' onClick={clickMint}>Mint NFT</button>
+					<input type="number" className='rounded-md outline-none text-black px-2 w-20' value={count} onChange={changeCount} required />
+					{
+						// candyMachine.state.itemsRedeemed === candyMachine.state.itemsAvailable ? 
+						// <div className="px-3 py-1 border-red-500 text-red-500 rounded-md border">SOLD OUT CRITTERS!</div> : 
+						<button className='px-3 py-1 rounded-md border border-green-500 text-green-500' disabled={isLoading}>
+							{ isLoading ? <ReactLoading type='bubbles' height={20} color='#0f0' className='flex items-center' /> : 'Mint NFT' }
+						</button>
 					}
 				</div>
-			</div> :
+			</form> :
 			<div>Loading...</div>
 	)
 

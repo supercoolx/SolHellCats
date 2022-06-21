@@ -1,3 +1,9 @@
+.App{
+    background-image: url('../imgs/background.png');
+    background-size: cover;
+    background-position-y: bottom;
+}
+
 div{
     color: white;
 }
