@@ -394,7 +394,7 @@ const CandyMachine = ({ walletAddress }) => {
 		//Only how this if machineStats is available 
 		candyMachine ?
 			<div className="w-full flex flex-col gap-3">
-				<ReCAPTCHA sitekey={process.env.GOOGLE_RECAPTCHA_KEY} onChange={console.log} />
+				<ReCAPTCHA sitekey={process.env.REACT_APP_RECAPTCHA_KEY} onChange={console.log} />
 				<div className='flex gap-3 justify-between items-center'>
 					<div>Amount:</div>
 					<input type="number" className='rounded-md outline-none text-black px-2 w-20' value={count} onChange={changeCount} />
